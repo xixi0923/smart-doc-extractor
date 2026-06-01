@@ -1,0 +1,14 @@
+"""Template for receipt document type."""
+{
+    "document_type": "receipt",
+    "name": "收据",
+    "description": "Receipt template",
+    "field_types": [
+        "invoice_date",
+        "amount_total",
+        "payment_method",
+        "receiver_name",
+        "receiver_phone",
+        "remarks"
+    ]
+}

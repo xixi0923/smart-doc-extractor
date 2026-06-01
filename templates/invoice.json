@@ -1,0 +1,29 @@
+"""Template for invoice document type."""
+{
+    "document_type": "invoice",
+    "name": "增值税发票",
+    "description": "Chinese VAT Invoice template",
+    "field_types": [
+        "invoice_number",
+        "invoice_code",
+        "invoice_date",
+        "seller_name",
+        "buyer_name",
+        "seller_tax_id",
+        "buyer_tax_id",
+        "amount_before_tax",
+        "tax_amount",
+        "amount_total",
+        "receiver_name",
+        "receiver_phone",
+        "remarks"
+    ],
+    "layout_hints": {
+        "invoice_number": "top_right",
+        "invoice_code": "top_right",
+        "invoice_date": "top_right",
+        "seller_name": "left_middle",
+        "buyer_name": "right_middle",
+        "amount_total": "bottom_center"
+    }
+}
