@@ -12,6 +12,8 @@ from typing import List, Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from config import AppConfig
 from src import __version__
@@ -55,6 +57,19 @@ def create_app(config: Optional[AppConfig] = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Serve static files (web console)
+    static_dir = Path(__file__).parent / "static"
+    if static_dir.is_dir():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+    @app.get("/", response_class=HTMLResponse)
+    async def web_console():
+        """Serve the web debugging console."""
+        index_path = static_dir / "index.html"
+        if index_path.is_file():
+            return FileResponse(str(index_path), media_type="text/html")
+        return HTMLResponse("<h1>Smart Doc Extractor</h1><p>Web console not found.</p>")
 
     # Storage for extractor instance (lazy init)
     _extractor_holder: dict = {"extractor": None}
@@ -180,6 +195,80 @@ def create_app(config: Optional[AppConfig] = None) -> FastAPI:
             total_time_ms=total_time,
             results=results,
         )
+
+    @app.post("/extract/visual", response_model=ExtractResponse)
+    async def extract_with_visual(
+        file: UploadFile = File(...),
+        document_type: str = Form(default="auto"),
+    ):
+        """
+        Extract information and return annotated image as base64.
+
+        Returns all extraction fields plus an annotated image
+        with bounding boxes and field labels for the web console.
+        """
+        import base64
+        import cv2
+
+        if not file.content_type:
+            file.content_type = "image/jpeg"
+
+        suffix = Path(file.filename).suffix if file.filename else ".png"
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=suffix
+        ) as tmp:
+            content = await file.read()
+            tmp.write(content)
+            tmp_path = tmp.name
+
+        try:
+            extractor = get_extractor()
+            result = extractor.process(tmp_path)
+
+            if not result.success:
+                return ExtractResponse(
+                    success=False,
+                    error=result.error,
+                )
+
+            # Generate annotated image
+            from src.utils.image_utils import load_image
+            from src.visualization.result_viewer import ResultViewer
+
+            viewer = ResultViewer()
+            original = load_image(tmp_path)
+            annotated = viewer.annotate_image(original, result)
+
+            # Encode annotated image as JPEG base64
+            _, buf = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            annotated_b64 = base64.b64encode(buf).decode("utf-8")
+
+            response = ExtractResponse(
+                success=True,
+                source=result.source_path,
+                document_type=result.extraction_result.document_type if result.extraction_result else "unknown",
+                total_fields=result.extraction_result.total_fields if result.extraction_result else 0,
+                high_confidence_fields=result.extraction_result.high_confidence_fields if result.extraction_result else 0,
+                total_time_ms=result.total_time_ms,
+                fields=result.extraction_result.to_dict()["fields"] if result.extraction_result else {},
+                ocr_text=result.ocr_result.full_text[:2000] if result.ocr_result else "",
+                ocr_confidence=result.ocr_result.avg_confidence if result.ocr_result else 0.0,
+            )
+            # Attach annotated image to response as extra field
+            response_dict = response.model_dump()
+            response_dict["annotated_image"] = f"data:image/jpeg;base64,{annotated_b64}"
+
+            # Add stage timings
+            response_dict["stage_timings"] = result.stage_timings if result.stage_timings else {}
+
+            return response_dict
+
+        except Exception as e:
+            logger.error(f"Visual extraction failed: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
 
     @app.get("/templates", response_model=TemplatesResponse)
     async def list_templates():

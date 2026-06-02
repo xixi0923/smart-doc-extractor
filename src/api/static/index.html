@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Doc Extractor - Web Console</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-light: #818cf8;
+            --primary-bg: #eef2ff;
+            --success: #059669;
+            --success-bg: #d1fae5;
+            --warning: #d97706;
+            --warning-bg: #fef3c7;
+            --danger: #dc2626;
+            --danger-bg: #fee2e2;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-500: #6b7280;
+            --gray-700: #374151;
+            --gray-900: #111827;
+            --radius: 8px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-lg: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-700);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow);
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header-left .logo {
+            width: 36px;
+            height: 36px;
+            background: var(--primary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 16px;
+        }
+        .header-left h1 {
+            font-size: 18px;
+            color: var(--gray-900);
+            font-weight: 600;
+        }
+        .header-left .version {
+            font-size: 11px;
+            background: var(--primary-bg);
+            color: var(--primary);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-dot.ok { background: var(--success); }
+        .status-dot.err { background: var(--danger); }
+        .status-dot.loading { background: var(--warning); animation: pulse 1s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        /* Layout */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* Card */
+        .card {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--gray-100);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--gray-900);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-body { padding: 20px; }
+
+        /* Upload Area */
+        .upload-zone {
+            border: 2px dashed var(--gray-300);
+            border-radius: var(--radius);
+            padding: 48px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--gray-50);
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--primary-light);
+            background: var(--primary-bg);
+        }
+        .upload-zone .icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            opacity: 0.6;
+        }
+        .upload-zone p { color: var(--gray-500); font-size: 14px; }
+        .upload-zone .formats {
+            font-size: 12px;
+            color: var(--gray-300);
+            margin-top: 8px;
+        }
+        .upload-zone input[type="file"] { display: none; }
+
+        /* Controls Row */
+        .controls-row {
+            display: flex;
+            gap: 16px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .control-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .control-group select, .control-group input[type="text"] {
+            padding: 8px 12px;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            font-size: 14px;
+            color: var(--gray-700);
+            background: white;
+            min-width: 140px;
+        }
+        .control-group select:focus, .control-group input:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 3px var(--primary-bg);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover { background: #4338ca; }
+        .btn-primary:disabled {
+            background: var(--gray-300);
+            cursor: not-allowed;
+        }
+        .btn-outline {
+            background: white;
+            color: var(--gray-700);
+            border: 1px solid var(--gray-200);
+        }
+        .btn-outline:hover { background: var(--gray-50); }
+        .btn-sm {
+            padding: 4px 12px;
+            font-size: 12px;
+        }
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        .btn-danger:hover { background: #b91c1c; }
+
+        /* Two-column layout */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 900px) {
+            .two-col { grid-template-columns: 1fr; }
+        }
+
+        /* Image preview */
+        .image-preview {
+            position: relative;
+            background: var(--gray-100);
+            border-radius: var(--radius);
+            overflow: hidden;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .image-preview img {
+            max-width: 100%;
+            max-height: 500px;
+            object-fit: contain;
+        }
+        .image-preview .placeholder {
+            color: var(--gray-300);
+            font-size: 14px;
+            text-align: center;
+            padding: 40px;
+        }
+        .image-preview .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--gray-200);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Tab switcher for image view */
+        .tab-bar {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid var(--gray-100);
+            margin-bottom: 0;
+        }
+        .tab-btn {
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--gray-500);
+            background: none;
+            border: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.15s;
+        }
+        .tab-btn:hover { color: var(--gray-700); }
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* Metrics */
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+        .metric {
+            background: var(--gray-50);
+            border-radius: 6px;
+            padding: 16px;
+            text-align: center;
+        }
+        .metric .value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+        .metric .label {
+            font-size: 12px;
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+        .metric.highlight .value { color: var(--primary); }
+
+        /* Field Table */
+        .field-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .field-table th {
+            background: var(--gray-50);
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--gray-500);
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+        .field-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--gray-100);
+            vertical-align: middle;
+        }
+        .field-table tr:hover { background: var(--gray-50); }
+
+        /* Confidence badges */
+        .conf-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .conf-high { background: var(--success-bg); color: var(--success); }
+        .conf-mid { background: var(--warning-bg); color: var(--warning); }
+        .conf-low { background: var(--danger-bg); color: var(--danger); }
+
+        /* Code block for OCR text */
+        .ocr-block {
+            background: #1e1e2e;
+            color: #cdd6f4;
+            padding: 16px;
+            border-radius: 6px;
+            font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+            font-size: 12px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        /* Performance timeline */
+        .perf-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 6px 0;
+        }
+        .perf-bar .stage-name {
+            width: 120px;
+            font-size: 12px;
+            color: var(--gray-500);
+            flex-shrink: 0;
+        }
+        .perf-bar .bar-track {
+            flex: 1;
+            height: 8px;
+            background: var(--gray-100);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .perf-bar .bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: var(--primary);
+            transition: width 0.5s ease;
+        }
+        .perf-bar .bar-fill.fast { background: var(--success); }
+        .perf-bar .bar-fill.slow { background: var(--warning); }
+        .perf-bar .bar-fill.very-slow { background: var(--danger); }
+        .perf-bar .bar-value {
+            width: 60px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--gray-700);
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        /* History list */
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--gray-100);
+            font-size: 13px;
+        }
+        .history-item:last-child { border-bottom: none; }
+        .history-item .hi-time {
+            color: var(--gray-300);
+            font-size: 11px;
+            width: 60px;
+            flex-shrink: 0;
+        }
+        .history-item .hi-name {
+            flex: 1;
+            color: var(--gray-700);
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .history-item .hi-type {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: var(--primary-bg);
+            color: var(--primary);
+        }
+        .history-item .hi-fields {
+            color: var(--gray-500);
+            font-size: 12px;
+        }
+        .history-item .hi-time-ms {
+            color: var(--gray-300);
+            font-size: 11px;
+        }
+
+        /* Templates cards */
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 12px;
+        }
+        .template-card {
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            padding: 16px;
+            transition: all 0.15s;
+            cursor: default;
+        }
+        .template-card:hover {
+            border-color: var(--primary-light);
+            box-shadow: var(--shadow);
+        }
+        .template-card .tc-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--gray-900);
+            margin-bottom: 4px;
+        }
+        .template-card .tc-desc {
+            font-size: 12px;
+            color: var(--gray-500);
+            margin-bottom: 8px;
+        }
+        .template-card .tc-fields {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .template-card .tc-fields span {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            background: var(--gray-100);
+            color: var(--gray-500);
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--gray-300);
+        }
+        .empty-state .icon { font-size: 40px; margin-bottom: 8px; }
+        .empty-state p { font-size: 14px; }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--gray-900);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            transform: translateY(80px);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container { padding: 16px; }
+            .metrics { grid-template-columns: repeat(2, 1fr); }
+            .controls-row { flex-direction: column; }
+            .template-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">SD</div>
+            <h1>Smart Doc Extractor</h1>
+            <span class="version" id="versionBadge">v0.1.0</span>
+        </div>
+        <div class="header-right">
+            <span style="font-size:13px;">
+                <span class="status-dot loading" id="statusDot"></span>
+                <span id="statusText" style="margin-left:6px;">Connecting...</span>
+            </span>
+            <button class="btn btn-outline btn-sm" onclick="checkHealth()">Refresh</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Upload + Controls -->
+        <div class="card">
+            <div class="card-body">
+                <div class="controls-row">
+                    <div class="control-group">
+                        <label>Document Type</label>
+                        <select id="docType">
+                            <option value="auto">Auto Detect</option>
+                            <option value="invoice">Invoice (发票)</option>
+                            <option value="receipt">Receipt (收据)</option>
+                            <option value="bank_statement">Bank Statement (银行流水)</option>
+                            <option value="contract">Contract (合同)</option>
+                        </select>
+                    </div>
+                    <div style="flex:1"></div>
+                    <button class="btn btn-outline btn-sm" onclick="showTemplates()">Templates</button>
+                    <button class="btn btn-outline btn-sm" onclick="clearAll()">Clear</button>
+                </div>
+
+                <div class="upload-zone" id="uploadZone"
+                     ondragover="event.preventDefault(); this.classList.add('dragover')"
+                     ondragleave="this.classList.remove('dragover')"
+                     ondrop="handleDrop(event)"
+                     onclick="document.getElementById('fileInput').click()">
+                    <div class="icon">&#128196;</div>
+                    <p>Click or drag image here to extract document information</p>
+                    <p class="formats">Supports: JPG, PNG, BMP, TIFF, WebP</p>
+                    <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Area (hidden until extraction) -->
+        <div id="resultsArea" style="display:none;">
+            <!-- Metrics Row -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="metrics">
+                        <div class="metric highlight">
+                            <div class="value" id="metricFields">-</div>
+                            <div class="label">Extracted Fields</div>
+                        </div>
+                        <div class="metric">
+                            <div class="value" id="metricHighConf">-</div>
+                            <div class="label">High Confidence</div>
+                        </div>
+                        <div class="metric">
+                            <div class="value" id="metricOcrConf">-</div>
+                            <div class="label">OCR Confidence</div>
+                        </div>
+                        <div class="metric">
+                            <div class="value" id="metricTime">-</div>
+                            <div class="label">Total Time (ms)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Two-column: Image + Fields -->
+            <div class="two-col">
+                <!-- Left: Image -->
+                <div class="card">
+                    <div class="tab-bar">
+                        <button class="tab-btn active" onclick="switchImageTab('original', this)">Original</button>
+                        <button class="tab-btn" onclick="switchImageTab('preview', this)">Preview</button>
+                    </div>
+                    <div class="card-body" style="padding: 0;">
+                        <div class="image-preview" id="imagePreviewOriginal">
+                            <img id="originalImg" src="" alt="Original">
+                        </div>
+                        <div class="image-preview" id="imagePreviewResult" style="display:none;">
+                            <img id="resultImg" src="" alt="Result">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Fields Table -->
+                <div class="card">
+                    <div class="card-header">
+                        Extracted Fields
+                        <span style="margin-left:auto; font-size:12px; color:var(--gray-500);" id="docTypeLabel"></span>
+                    </div>
+                    <div class="card-body" style="padding:0; max-height: 500px; overflow-y: auto;">
+                        <table class="field-table" id="fieldsTable">
+                            <thead>
+                                <tr>
+                                    <th>Field</th>
+                                    <th>Value</th>
+                                    <th>Confidence</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fieldsBody"></tbody>
+                        </table>
+                        <div class="empty-state" id="fieldsEmpty" style="display:none;">
+                            <p>No fields extracted</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OCR Text -->
+            <div class="card">
+                <div class="card-header">OCR Full Text</div>
+                <div class="card-body" style="padding: 16px;">
+                    <div class="ocr-block" id="ocrText">-</div>
+                </div>
+            </div>
+
+            <!-- Performance -->
+            <div class="card">
+                <div class="card-header">Pipeline Performance</div>
+                <div class="card-body" id="perfArea">
+                    <div class="empty-state"><p>Run an extraction to see pipeline performance</p></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History -->
+        <div class="card" id="historyCard" style="display:none;">
+            <div class="card-header">
+                Extraction History
+                <button class="btn btn-outline btn-sm" style="margin-left:auto;" onclick="clearHistory()">Clear</button>
+            </div>
+            <div class="card-body" id="historyBody" style="padding:0 20px;"></div>
+        </div>
+
+        <!-- Templates Panel (hidden) -->
+        <div class="card" id="templatesPanel" style="display:none;">
+            <div class="card-header">
+                Document Templates
+                <button class="btn btn-outline btn-sm" style="margin-left:auto;" onclick="hideTemplates()">Close</button>
+            </div>
+            <div class="card-body">
+                <div class="template-grid" id="templatesGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+    // ===== State =====
+    const API_BASE = window.location.origin;
+    let currentFile = null;
+    let history = [];
+    let extractedData = null;
+
+    // ===== Init =====
+    document.addEventListener('DOMContentLoaded', () => {
+        checkHealth();
+    });
+
+    // ===== Health Check =====
+    async function checkHealth() {
+        const dot = document.getElementById('statusDot');
+        const text = document.getElementById('statusText');
+        try {
+            const resp = await fetch(`${API_BASE}/health`);
+            const data = await resp.json();
+            dot.className = 'status-dot ok';
+            text.textContent = `${data.ocr_engine || 'OCR'} Ready`;
+            document.getElementById('versionBadge').textContent = `v${data.version || '0.1.0'}`;
+        } catch (e) {
+            dot.className = 'status-dot err';
+            text.textContent = 'Offline';
+        }
+    }
+
+    // ===== File Handling =====
+    function handleDrop(e) {
+        e.preventDefault();
+        e.currentTarget.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) processFile(files[0]);
+    }
+
+    function handleFileSelect(e) {
+        const files = e.target.files;
+        if (files.length > 0) processFile(files[0]);
+    }
+
+    function processFile(file) {
+        if (!file.type.startsWith('image/')) {
+            showToast('Please select an image file');
+            return;
+        }
+        currentFile = file;
+
+        // Show preview immediately
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            document.getElementById('originalImg').src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+
+        // Auto-extract
+        extractDocument();
+    }
+
+    // ===== Extraction =====
+    async function extractDocument() {
+        if (!currentFile) return;
+
+        const docType = document.getElementById('docType').value;
+
+        // Show loading
+        showLoading(true);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', currentFile);
+            formData.append('document_type', docType);
+
+            const resp = await fetch(`${API_BASE}/extract/visual`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await resp.json();
+
+            if (!data.success) {
+                showToast(`Extraction failed: ${data.error || 'Unknown error'}`);
+                showLoading(false);
+                return;
+            }
+
+            extractedData = data;
+
+            // Set annotated image for Preview tab
+            if (data.annotated_image) {
+                document.getElementById('resultImg').src = data.annotated_image;
+            }
+
+            renderResults(data);
+            renderPerformance(data.stage_timings || {});
+            addToHistory(data, currentFile.name);
+            showToast('Extraction complete');
+
+        } catch (e) {
+            showToast(`Error: ${e.message}`);
+        }
+
+        showLoading(false);
+    }
+
+    // ===== Render Results =====
+    function renderResults(data) {
+        document.getElementById('resultsArea').style.display = 'block';
+
+        // Metrics
+        document.getElementById('metricFields').textContent = data.total_fields || 0;
+        document.getElementById('metricHighConf').textContent = data.high_confidence_fields || 0;
+        document.getElementById('metricOcrConf').textContent = data.ocr_confidence
+            ? `${(data.ocr_confidence * 100).toFixed(0)}%` : '-';
+        document.getElementById('metricTime').textContent = data.total_time_ms
+            ? data.total_time_ms.toFixed(0) : '-';
+
+        // Document type label
+        document.getElementById('docTypeLabel').textContent = data.document_type || '-';
+
+        // Fields table
+        const tbody = document.getElementById('fieldsBody');
+        const fields = data.fields || {};
+        const keys = Object.keys(fields);
+
+        if (keys.length === 0) {
+            tbody.innerHTML = '';
+            document.getElementById('fieldsEmpty').style.display = 'block';
+        } else {
+            document.getElementById('fieldsEmpty').style.display = 'none';
+            tbody.innerHTML = keys.map(key => {
+                const f = fields[key];
+                const conf = f.confidence || 0;
+                const confPct = (conf * 100).toFixed(0);
+                let confClass = 'conf-low';
+                if (conf >= 0.8) confClass = 'conf-high';
+                else if (conf >= 0.6) confClass = 'conf-mid';
+
+                return `<tr>
+                    <td><strong>${f.display_name || key}</strong><br><span style="font-size:11px;color:var(--gray-300);">${key}</span></td>
+                    <td>${f.value || '-'}</td>
+                    <td><span class="conf-badge ${confClass}">${confPct}%</span></td>
+                </tr>`;
+            }).join('');
+        }
+
+        // OCR text
+        document.getElementById('ocrText').textContent = data.ocr_text || '(no text)';
+
+        // Show original image tab
+        switchImageTab('original', document.querySelector('.tab-btn.active'));
+    }
+
+    // ===== Image Tab Switch =====
+    function switchImageTab(tab, btn) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        if (tab === 'original') {
+            document.getElementById('imagePreviewOriginal').style.display = 'flex';
+            document.getElementById('imagePreviewResult').style.display = 'none';
+        } else {
+            document.getElementById('imagePreviewOriginal').style.display = 'none';
+            document.getElementById('imagePreviewResult').style.display = 'flex';
+        }
+    }
+
+    // ===== Performance Rendering =====
+    function renderPerformance(timings) {
+        const area = document.getElementById('perfArea');
+        const keys = Object.keys(timings);
+
+        if (keys.length === 0) {
+            area.innerHTML = '<div class="empty-state"><p>No performance data available</p></div>';
+            return;
+        }
+
+        const maxMs = Math.max(...keys.map(k => timings[k]), 1);
+
+        area.innerHTML = keys.map(key => {
+            const ms = timings[key];
+            const pct = (ms / maxMs * 100).toFixed(1);
+            let speedClass = 'fast';
+            if (ms > maxMs * 0.6) speedClass = 'very-slow';
+            else if (ms > maxMs * 0.3) speedClass = 'slow';
+
+            return `<div class="perf-bar">
+                <span class="stage-name">${key}</span>
+                <div class="bar-track">
+                    <div class="bar-fill ${speedClass}" style="width:${pct}%"></div>
+                </div>
+                <span class="bar-value">${ms.toFixed(1)}ms</span>
+            </div>`;
+        }).join('');
+    }
+
+    // ===== Loading State =====
+    function showLoading(show) {
+        const preview = document.getElementById('imagePreviewOriginal');
+        const existing = preview.querySelector('.loading-overlay');
+        if (show) {
+            if (!existing) {
+                const overlay = document.createElement('div');
+                overlay.className = 'loading-overlay';
+                overlay.innerHTML = '<div class="spinner"></div><span style="font-size:13px;color:var(--gray-500);">Extracting...</span>';
+                preview.appendChild(overlay);
+            }
+        } else {
+            if (existing) existing.remove();
+        }
+    }
+
+    // ===== History =====
+    function addToHistory(data, filename) {
+        const now = new Date();
+        const entry = {
+            time: now.toLocaleTimeString(),
+            name: filename,
+            type: data.document_type || 'auto',
+            fields: data.total_fields || 0,
+            time_ms: data.total_time_ms || 0,
+        };
+        history.unshift(entry);
+        if (history.length > 20) history.pop();
+        renderHistory();
+    }
+
+    function renderHistory() {
+        const card = document.getElementById('historyCard');
+        const body = document.getElementById('historyBody');
+        card.style.display = 'block';
+
+        body.innerHTML = history.map(h => `
+            <div class="history-item">
+                <span class="hi-time">${h.time}</span>
+                <span class="hi-name">${h.name}</span>
+                <span class="hi-type">${h.type}</span>
+                <span class="hi-fields">${h.fields} fields</span>
+                <span class="hi-time-ms">${h.time_ms.toFixed(0)}ms</span>
+            </div>
+        `).join('');
+    }
+
+    function clearHistory() {
+        history = [];
+        document.getElementById('historyCard').style.display = 'none';
+        showToast('History cleared');
+    }
+
+    // ===== Templates =====
+    async function showTemplates() {
+        const panel = document.getElementById('templatesPanel');
+        panel.style.display = 'block';
+        panel.scrollIntoView({ behavior: 'smooth' });
+
+        try {
+            const resp = await fetch(`${API_BASE}/templates`);
+            const data = await resp.json();
+
+            const grid = document.getElementById('templatesGrid');
+            grid.innerHTML = (data.templates || []).map(t => `
+                <div class="template-card">
+                    <div class="tc-name">${t.name}</div>
+                    <div class="tc-desc">${t.description}</div>
+                    <div class="tc-fields">
+                        ${(t.field_types || []).map(f => `<span>${f}</span>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+        } catch (e) {
+            document.getElementById('templatesGrid').innerHTML = '<p>Failed to load templates</p>';
+        }
+    }
+
+    function hideTemplates() {
+        document.getElementById('templatesPanel').style.display = 'none';
+    }
+
+    // ===== Clear =====
+    function clearAll() {
+        currentFile = null;
+        extractedData = null;
+        document.getElementById('resultsArea').style.display = 'none';
+        document.getElementById('originalImg').src = '';
+        document.getElementById('fileInput').value = '';
+        document.getElementById('uploadZone').style.display = '';
+        showToast('Cleared');
+    }
+
+    // ===== Toast =====
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+    </script>
+</body>
+</html>
