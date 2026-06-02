@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Doc Extractor - Web Console</title>
+    <title>智能文档提取系统 - 调试控制台</title>
     <style>
         :root {
             --primary: #4f46e5;
@@ -30,14 +30,14 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
             background: var(--gray-50);
             color: var(--gray-700);
             line-height: 1.6;
             min-height: 100vh;
         }
 
-        /* Header */
+        /* 顶部导航栏 */
         .header {
             background: white;
             border-bottom: 1px solid var(--gray-200);
@@ -85,6 +85,7 @@
             align-items: center;
             gap: 16px;
         }
+        /* 服务状态指示灯 */
         .status-dot {
             width: 8px;
             height: 8px;
@@ -96,14 +97,14 @@
         .status-dot.loading { background: var(--warning); animation: pulse 1s infinite; }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-        /* Layout */
+        /* 主体容器 */
         .container {
             max-width: 1400px;
             margin: 0 auto;
             padding: 24px;
         }
 
-        /* Card */
+        /* 卡片组件 */
         .card {
             background: white;
             border-radius: var(--radius);
@@ -123,7 +124,7 @@
         }
         .card-body { padding: 20px; }
 
-        /* Upload Area */
+        /* 图片上传区域 */
         .upload-zone {
             border: 2px dashed var(--gray-300);
             border-radius: var(--radius);
@@ -150,7 +151,7 @@
         }
         .upload-zone input[type="file"] { display: none; }
 
-        /* Controls Row */
+        /* 控制项行布局 */
         .controls-row {
             display: flex;
             gap: 16px;
@@ -177,7 +178,7 @@
             font-size: 14px;
             color: var(--gray-700);
             background: white;
-            min-width: 140px;
+            min-width: 160px;
         }
         .control-group select:focus, .control-group input:focus {
             outline: none;
@@ -185,7 +186,7 @@
             box-shadow: 0 0 0 3px var(--primary-bg);
         }
 
-        /* Buttons */
+        /* 按钮样式 */
         .btn {
             padding: 8px 20px;
             border-radius: 6px;
@@ -223,7 +224,7 @@
         }
         .btn-danger:hover { background: #b91c1c; }
 
-        /* Two-column layout */
+        /* 两栏布局 */
         .two-col {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -233,7 +234,7 @@
             .two-col { grid-template-columns: 1fr; }
         }
 
-        /* Image preview */
+        /* 图片预览区 */
         .image-preview {
             position: relative;
             background: var(--gray-100);
@@ -255,6 +256,7 @@
             text-align: center;
             padding: 40px;
         }
+        /* 加载遮罩层 */
         .image-preview .loading-overlay {
             position: absolute;
             inset: 0;
@@ -265,6 +267,7 @@
             justify-content: center;
             gap: 12px;
         }
+        /* 旋转加载动画 */
         .spinner {
             width: 32px;
             height: 32px;
@@ -275,7 +278,7 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Tab switcher for image view */
+        /* 原图/标注图切换标签栏 */
         .tab-bar {
             display: flex;
             gap: 0;
@@ -300,7 +303,7 @@
             border-bottom-color: var(--primary);
         }
 
-        /* Metrics */
+        /* 指标卡片网格 */
         .metrics {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -324,7 +327,7 @@
         }
         .metric.highlight .value { color: var(--primary); }
 
-        /* Field Table */
+        /* 字段提取结果表格 */
         .field-table {
             width: 100%;
             border-collapse: collapse;
@@ -348,7 +351,7 @@
         }
         .field-table tr:hover { background: var(--gray-50); }
 
-        /* Confidence badges */
+        /* 置信度彩色徽章 */
         .conf-badge {
             display: inline-block;
             padding: 2px 10px;
@@ -356,11 +359,11 @@
             font-size: 12px;
             font-weight: 600;
         }
-        .conf-high { background: var(--success-bg); color: var(--success); }
-        .conf-mid { background: var(--warning-bg); color: var(--warning); }
-        .conf-low { background: var(--danger-bg); color: var(--danger); }
+        .conf-high { background: var(--success-bg); color: var(--success); }   /* 高置信度：绿色 */
+        .conf-mid  { background: var(--warning-bg); color: var(--warning); }   /* 中置信度：橙色 */
+        .conf-low  { background: var(--danger-bg);  color: var(--danger);  }   /* 低置信度：红色 */
 
-        /* Code block for OCR text */
+        /* OCR 全文代码块 */
         .ocr-block {
             background: #1e1e2e;
             color: #cdd6f4;
@@ -374,7 +377,7 @@
             overflow-y: auto;
         }
 
-        /* Performance timeline */
+        /* 流水线性能时间线 */
         .perf-bar {
             display: flex;
             align-items: center;
@@ -382,7 +385,7 @@
             padding: 6px 0;
         }
         .perf-bar .stage-name {
-            width: 120px;
+            width: 140px;
             font-size: 12px;
             color: var(--gray-500);
             flex-shrink: 0;
@@ -400,9 +403,10 @@
             background: var(--primary);
             transition: width 0.5s ease;
         }
-        .perf-bar .bar-fill.fast { background: var(--success); }
-        .perf-bar .bar-fill.slow { background: var(--warning); }
-        .perf-bar .bar-fill.very-slow { background: var(--danger); }
+        /* 耗时颜色分级：快/中/慢 */
+        .perf-bar .bar-fill.fast      { background: var(--success); }
+        .perf-bar .bar-fill.slow      { background: var(--warning); }
+        .perf-bar .bar-fill.very-slow { background: var(--danger);  }
         .perf-bar .bar-value {
             width: 60px;
             font-size: 12px;
@@ -412,7 +416,7 @@
             flex-shrink: 0;
         }
 
-        /* History list */
+        /* 提取历史列表 */
         .history-item {
             display: flex;
             align-items: center;
@@ -425,7 +429,7 @@
         .history-item .hi-time {
             color: var(--gray-300);
             font-size: 11px;
-            width: 60px;
+            width: 65px;
             flex-shrink: 0;
         }
         .history-item .hi-name {
@@ -452,7 +456,7 @@
             font-size: 11px;
         }
 
-        /* Templates cards */
+        /* 文档模板卡片 */
         .template-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -493,7 +497,7 @@
             color: var(--gray-500);
         }
 
-        /* Empty state */
+        /* 空状态占位 */
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -502,7 +506,7 @@
         .empty-state .icon { font-size: 40px; margin-bottom: 8px; }
         .empty-state p { font-size: 14px; }
 
-        /* Toast notification */
+        /* 底部提示 Toast */
         .toast {
             position: fixed;
             bottom: 24px;
@@ -523,7 +527,7 @@
             opacity: 1;
         }
 
-        /* Responsive */
+        /* 响应式适配 */
         @media (max-width: 768px) {
             .container { padding: 16px; }
             .metrics { grid-template-columns: repeat(2, 1fr); }
@@ -533,154 +537,155 @@
     </style>
 </head>
 <body>
-    <!-- Header -->
+    <!-- 顶部导航栏 -->
     <header class="header">
         <div class="header-left">
-            <div class="logo">SD</div>
-            <h1>Smart Doc Extractor</h1>
+            <div class="logo">智</div>
+            <h1>智能文档提取系统</h1>
             <span class="version" id="versionBadge">v0.1.0</span>
         </div>
         <div class="header-right">
             <span style="font-size:13px;">
                 <span class="status-dot loading" id="statusDot"></span>
-                <span id="statusText" style="margin-left:6px;">Connecting...</span>
+                <span id="statusText" style="margin-left:6px;">连接中...</span>
             </span>
-            <button class="btn btn-outline btn-sm" onclick="checkHealth()">Refresh</button>
+            <button class="btn btn-outline btn-sm" onclick="checkHealth()">刷新状态</button>
         </div>
     </header>
 
     <div class="container">
-        <!-- Upload + Controls -->
+        <!-- 上传区域 + 操作控件 -->
         <div class="card">
             <div class="card-body">
                 <div class="controls-row">
                     <div class="control-group">
-                        <label>Document Type</label>
+                        <label>文档类型</label>
                         <select id="docType">
-                            <option value="auto">Auto Detect</option>
-                            <option value="invoice">Invoice (发票)</option>
-                            <option value="receipt">Receipt (收据)</option>
-                            <option value="bank_statement">Bank Statement (银行流水)</option>
-                            <option value="contract">Contract (合同)</option>
+                            <option value="auto">自动识别</option>
+                            <option value="invoice">增值税发票</option>
+                            <option value="receipt">收据/小票</option>
+                            <option value="bank_statement">银行流水</option>
+                            <option value="contract">合同/协议</option>
                         </select>
                     </div>
                     <div style="flex:1"></div>
-                    <button class="btn btn-outline btn-sm" onclick="showTemplates()">Templates</button>
-                    <button class="btn btn-outline btn-sm" onclick="clearAll()">Clear</button>
+                    <button class="btn btn-outline btn-sm" onclick="showTemplates()">📋 文档模板</button>
+                    <button class="btn btn-outline btn-sm" onclick="clearAll()">🗑️ 清空</button>
                 </div>
 
+                <!-- 拖拽上传区域 -->
                 <div class="upload-zone" id="uploadZone"
                      ondragover="event.preventDefault(); this.classList.add('dragover')"
                      ondragleave="this.classList.remove('dragover')"
                      ondrop="handleDrop(event)"
                      onclick="document.getElementById('fileInput').click()">
-                    <div class="icon">&#128196;</div>
-                    <p>Click or drag image here to extract document information</p>
-                    <p class="formats">Supports: JPG, PNG, BMP, TIFF, WebP</p>
+                    <div class="icon">📄</div>
+                    <p>点击或拖拽图片到此处，自动提取文档信息</p>
+                    <p class="formats">支持格式：JPG、PNG、BMP、TIFF、WebP</p>
                     <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
                 </div>
             </div>
         </div>
 
-        <!-- Results Area (hidden until extraction) -->
+        <!-- 提取结果区域（提取后显示） -->
         <div id="resultsArea" style="display:none;">
-            <!-- Metrics Row -->
+            <!-- 核心指标卡片行 -->
             <div class="card">
                 <div class="card-body">
                     <div class="metrics">
                         <div class="metric highlight">
                             <div class="value" id="metricFields">-</div>
-                            <div class="label">Extracted Fields</div>
+                            <div class="label">提取字段数</div>
                         </div>
                         <div class="metric">
                             <div class="value" id="metricHighConf">-</div>
-                            <div class="label">High Confidence</div>
+                            <div class="label">高置信度字段</div>
                         </div>
                         <div class="metric">
                             <div class="value" id="metricOcrConf">-</div>
-                            <div class="label">OCR Confidence</div>
+                            <div class="label">OCR 置信度</div>
                         </div>
                         <div class="metric">
                             <div class="value" id="metricTime">-</div>
-                            <div class="label">Total Time (ms)</div>
+                            <div class="label">总耗时（毫秒）</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Two-column: Image + Fields -->
+            <!-- 两栏：左侧图片预览，右侧字段表格 -->
             <div class="two-col">
-                <!-- Left: Image -->
+                <!-- 左侧：图片预览（原图 / 标注图切换） -->
                 <div class="card">
                     <div class="tab-bar">
-                        <button class="tab-btn active" onclick="switchImageTab('original', this)">Original</button>
-                        <button class="tab-btn" onclick="switchImageTab('preview', this)">Preview</button>
+                        <button class="tab-btn active" onclick="switchImageTab('original', this)">原始图片</button>
+                        <button class="tab-btn" onclick="switchImageTab('preview', this)">标注预览</button>
                     </div>
                     <div class="card-body" style="padding: 0;">
                         <div class="image-preview" id="imagePreviewOriginal">
-                            <img id="originalImg" src="" alt="Original">
+                            <img id="originalImg" src="" alt="原始图片">
                         </div>
                         <div class="image-preview" id="imagePreviewResult" style="display:none;">
-                            <img id="resultImg" src="" alt="Result">
+                            <img id="resultImg" src="" alt="标注结果">
                         </div>
                     </div>
                 </div>
 
-                <!-- Right: Fields Table -->
+                <!-- 右侧：字段提取结果表格 -->
                 <div class="card">
                     <div class="card-header">
-                        Extracted Fields
+                        📊 提取字段详情
                         <span style="margin-left:auto; font-size:12px; color:var(--gray-500);" id="docTypeLabel"></span>
                     </div>
                     <div class="card-body" style="padding:0; max-height: 500px; overflow-y: auto;">
                         <table class="field-table" id="fieldsTable">
                             <thead>
                                 <tr>
-                                    <th>Field</th>
-                                    <th>Value</th>
-                                    <th>Confidence</th>
+                                    <th>字段名称</th>
+                                    <th>提取值</th>
+                                    <th>置信度</th>
                                 </tr>
                             </thead>
                             <tbody id="fieldsBody"></tbody>
                         </table>
                         <div class="empty-state" id="fieldsEmpty" style="display:none;">
-                            <p>No fields extracted</p>
+                            <p>未提取到任何字段</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- OCR Text -->
+            <!-- OCR 全文识别结果 -->
             <div class="card">
-                <div class="card-header">OCR Full Text</div>
+                <div class="card-header">🔤 OCR 全文识别结果</div>
                 <div class="card-body" style="padding: 16px;">
                     <div class="ocr-block" id="ocrText">-</div>
                 </div>
             </div>
 
-            <!-- Performance -->
+            <!-- 流水线各阶段性能时间线 -->
             <div class="card">
-                <div class="card-header">Pipeline Performance</div>
+                <div class="card-header">⚡ 流水线性能分析</div>
                 <div class="card-body" id="perfArea">
-                    <div class="empty-state"><p>Run an extraction to see pipeline performance</p></div>
+                    <div class="empty-state"><p>执行提取后查看各阶段耗时</p></div>
                 </div>
             </div>
         </div>
 
-        <!-- History -->
+        <!-- 提取历史记录 -->
         <div class="card" id="historyCard" style="display:none;">
             <div class="card-header">
-                Extraction History
-                <button class="btn btn-outline btn-sm" style="margin-left:auto;" onclick="clearHistory()">Clear</button>
+                🕒 提取历史记录
+                <button class="btn btn-outline btn-sm" style="margin-left:auto;" onclick="clearHistory()">清空历史</button>
             </div>
             <div class="card-body" id="historyBody" style="padding:0 20px;"></div>
         </div>
 
-        <!-- Templates Panel (hidden) -->
+        <!-- 文档模板面板（默认隐藏） -->
         <div class="card" id="templatesPanel" style="display:none;">
             <div class="card-header">
-                Document Templates
-                <button class="btn btn-outline btn-sm" style="margin-left:auto;" onclick="hideTemplates()">Close</button>
+                📋 支持的文档模板
+                <button class="btn btn-outline btn-sm" style="margin-left:auto;" onclick="hideTemplates()">关闭</button>
             </div>
             <div class="card-body">
                 <div class="template-grid" id="templatesGrid"></div>
@@ -688,22 +693,22 @@
         </div>
     </div>
 
-    <!-- Toast -->
+    <!-- 提示 Toast 通知 -->
     <div class="toast" id="toast"></div>
 
     <script>
-    // ===== State =====
-    const API_BASE = window.location.origin;
-    let currentFile = null;
-    let history = [];
-    let extractedData = null;
+    // ===== 全局状态 =====
+    const API_BASE = window.location.origin;  // 后端 API 地址（同源）
+    let currentFile = null;     // 当前已选择的文件
+    let history = [];           // 提取历史记录数组（最多20条）
+    let extractedData = null;   // 最近一次提取结果
 
-    // ===== Init =====
+    // ===== 初始化：页面加载后检查后端连接 =====
     document.addEventListener('DOMContentLoaded', () => {
         checkHealth();
     });
 
-    // ===== Health Check =====
+    // ===== 后端健康检查 =====
     async function checkHealth() {
         const dot = document.getElementById('statusDot');
         const text = document.getElementById('statusText');
@@ -711,15 +716,17 @@
             const resp = await fetch(`${API_BASE}/health`);
             const data = await resp.json();
             dot.className = 'status-dot ok';
-            text.textContent = `${data.ocr_engine || 'OCR'} Ready`;
+            // 显示 OCR 引擎名称和版本
+            text.textContent = `${data.ocr_engine || 'OCR'} 已就绪`;
             document.getElementById('versionBadge').textContent = `v${data.version || '0.1.0'}`;
         } catch (e) {
+            // 后端离线或网络错误
             dot.className = 'status-dot err';
-            text.textContent = 'Offline';
+            text.textContent = '服务离线';
         }
     }
 
-    // ===== File Handling =====
+    // ===== 文件处理：拖拽放置 =====
     function handleDrop(e) {
         e.preventDefault();
         e.currentTarget.classList.remove('dragover');
@@ -727,39 +734,43 @@
         if (files.length > 0) processFile(files[0]);
     }
 
+    // ===== 文件处理：点击选择 =====
     function handleFileSelect(e) {
         const files = e.target.files;
         if (files.length > 0) processFile(files[0]);
     }
 
+    // ===== 处理选中的文件（校验 + 预览 + 自动提取） =====
     function processFile(file) {
+        // 只接受图片格式
         if (!file.type.startsWith('image/')) {
-            showToast('Please select an image file');
+            showToast('请选择图片文件（JPG、PNG、BMP 等）');
             return;
         }
         currentFile = file;
 
-        // Show preview immediately
+        // 立即显示原图预览（不等待接口返回）
         const reader = new FileReader();
         reader.onload = (e) => {
             document.getElementById('originalImg').src = e.target.result;
         };
         reader.readAsDataURL(file);
 
-        // Auto-extract
+        // 自动触发提取
         extractDocument();
     }
 
-    // ===== Extraction =====
+    // ===== 核心提取逻辑（调用 /extract/visual 接口） =====
     async function extractDocument() {
         if (!currentFile) return;
 
         const docType = document.getElementById('docType').value;
 
-        // Show loading
+        // 显示加载状态
         showLoading(true);
 
         try {
+            // 构建 multipart/form-data 请求
             const formData = new FormData();
             formData.append('file', currentFile);
             formData.append('document_type', docType);
@@ -771,36 +782,40 @@
 
             const data = await resp.json();
 
+            // 提取失败时显示错误
             if (!data.success) {
-                showToast(`Extraction failed: ${data.error || 'Unknown error'}`);
+                showToast(`提取失败：${data.error || '未知错误'}`);
                 showLoading(false);
                 return;
             }
 
             extractedData = data;
 
-            // Set annotated image for Preview tab
+            // 将标注图（base64）设置到预览标签
             if (data.annotated_image) {
                 document.getElementById('resultImg').src = data.annotated_image;
             }
 
+            // 渲染结果、性能数据、历史记录
             renderResults(data);
             renderPerformance(data.stage_timings || {});
             addToHistory(data, currentFile.name);
-            showToast('Extraction complete');
+            showToast('✅ 提取完成');
 
         } catch (e) {
-            showToast(`Error: ${e.message}`);
+            // 网络异常或接口报错
+            showToast(`请求错误：${e.message}`);
         }
 
         showLoading(false);
     }
 
-    // ===== Render Results =====
+    // ===== 渲染提取结果到页面 =====
     function renderResults(data) {
+        // 显示结果区域
         document.getElementById('resultsArea').style.display = 'block';
 
-        // Metrics
+        // 更新四个指标卡片
         document.getElementById('metricFields').textContent = data.total_fields || 0;
         document.getElementById('metricHighConf').textContent = data.high_confidence_fields || 0;
         document.getElementById('metricOcrConf').textContent = data.ocr_confidence
@@ -808,15 +823,21 @@
         document.getElementById('metricTime').textContent = data.total_time_ms
             ? data.total_time_ms.toFixed(0) : '-';
 
-        // Document type label
-        document.getElementById('docTypeLabel').textContent = data.document_type || '-';
+        // 文档类型标签
+        const typeMap = {
+            invoice: '增值税发票', receipt: '收据/小票',
+            bank_statement: '银行流水', contract: '合同/协议', auto: '自动识别'
+        };
+        const typeKey = data.document_type || 'auto';
+        document.getElementById('docTypeLabel').textContent = typeMap[typeKey] || typeKey;
 
-        // Fields table
+        // 渲染字段表格
         const tbody = document.getElementById('fieldsBody');
         const fields = data.fields || {};
         const keys = Object.keys(fields);
 
         if (keys.length === 0) {
+            // 无字段时显示空状态
             tbody.innerHTML = '';
             document.getElementById('fieldsEmpty').style.display = 'block';
         } else {
@@ -825,60 +846,80 @@
                 const f = fields[key];
                 const conf = f.confidence || 0;
                 const confPct = (conf * 100).toFixed(0);
+                // 根据置信度值决定颜色：>=80% 绿，>=60% 橙，<60% 红
                 let confClass = 'conf-low';
                 if (conf >= 0.8) confClass = 'conf-high';
                 else if (conf >= 0.6) confClass = 'conf-mid';
 
                 return `<tr>
-                    <td><strong>${f.display_name || key}</strong><br><span style="font-size:11px;color:var(--gray-300);">${key}</span></td>
+                    <td><strong>${f.display_name || key}</strong><br>
+                        <span style="font-size:11px;color:var(--gray-300);">${key}</span>
+                    </td>
                     <td>${f.value || '-'}</td>
                     <td><span class="conf-badge ${confClass}">${confPct}%</span></td>
                 </tr>`;
             }).join('');
         }
 
-        // OCR text
-        document.getElementById('ocrText').textContent = data.ocr_text || '(no text)';
+        // 显示 OCR 识别全文（最多2000字符）
+        document.getElementById('ocrText').textContent = data.ocr_text || '（未识别到文本）';
 
-        // Show original image tab
+        // 默认切换回原图标签
         switchImageTab('original', document.querySelector('.tab-btn.active'));
     }
 
-    // ===== Image Tab Switch =====
+    // ===== 原图 / 标注图切换 =====
     function switchImageTab(tab, btn) {
+        // 重置所有标签激活状态
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
         if (tab === 'original') {
+            // 显示原始图片
             document.getElementById('imagePreviewOriginal').style.display = 'flex';
             document.getElementById('imagePreviewResult').style.display = 'none';
         } else {
+            // 显示 OCR 标注结果图（由后端 /extract/visual 返回的 base64）
             document.getElementById('imagePreviewOriginal').style.display = 'none';
             document.getElementById('imagePreviewResult').style.display = 'flex';
         }
     }
 
-    // ===== Performance Rendering =====
+    // ===== 渲染流水线性能时间线 =====
     function renderPerformance(timings) {
         const area = document.getElementById('perfArea');
         const keys = Object.keys(timings);
 
         if (keys.length === 0) {
-            area.innerHTML = '<div class="empty-state"><p>No performance data available</p></div>';
+            area.innerHTML = '<div class="empty-state"><p>暂无性能数据</p></div>';
             return;
         }
 
+        // 取最大值用于计算百分比宽度
         const maxMs = Math.max(...keys.map(k => timings[k]), 1);
+
+        // 阶段名称中文映射
+        const stageNames = {
+            preprocessing: '图像预处理',
+            detection:     '文本检测',
+            recognition:   'OCR 识别',
+            extraction:    '字段抽取',
+            visualization: '结果可视化',
+            layout:        '版面分析',
+        };
 
         area.innerHTML = keys.map(key => {
             const ms = timings[key];
             const pct = (ms / maxMs * 100).toFixed(1);
+            // 耗时分级：占最大值 60%+ 为慢，30%+ 为中，其余为快
             let speedClass = 'fast';
             if (ms > maxMs * 0.6) speedClass = 'very-slow';
             else if (ms > maxMs * 0.3) speedClass = 'slow';
 
+            const displayName = stageNames[key] || key;
+
             return `<div class="perf-bar">
-                <span class="stage-name">${key}</span>
+                <span class="stage-name">${displayName}</span>
                 <div class="bar-track">
                     <div class="bar-fill ${speedClass}" style="width:${pct}%"></div>
                 </div>
@@ -887,7 +928,7 @@
         }).join('');
     }
 
-    // ===== Loading State =====
+    // ===== 显示/隐藏加载遮罩 =====
     function showLoading(show) {
         const preview = document.getElementById('imagePreviewOriginal');
         const existing = preview.querySelector('.loading-overlay');
@@ -895,7 +936,8 @@
             if (!existing) {
                 const overlay = document.createElement('div');
                 overlay.className = 'loading-overlay';
-                overlay.innerHTML = '<div class="spinner"></div><span style="font-size:13px;color:var(--gray-500);">Extracting...</span>';
+                overlay.innerHTML = '<div class="spinner"></div>'
+                    + '<span style="font-size:13px;color:var(--gray-500);">识别中，请稍候...</span>';
                 preview.appendChild(overlay);
             }
         } else {
@@ -903,21 +945,26 @@
         }
     }
 
-    // ===== History =====
+    // ===== 添加一条历史记录 =====
     function addToHistory(data, filename) {
         const now = new Date();
+        const typeMap = {
+            invoice: '发票', receipt: '收据', bank_statement: '银行流水',
+            contract: '合同', auto: '自动', unknown: '未知'
+        };
         const entry = {
-            time: now.toLocaleTimeString(),
+            time: now.toLocaleTimeString('zh-CN'),
             name: filename,
-            type: data.document_type || 'auto',
+            type: typeMap[data.document_type] || data.document_type || '自动',
             fields: data.total_fields || 0,
             time_ms: data.total_time_ms || 0,
         };
         history.unshift(entry);
-        if (history.length > 20) history.pop();
+        if (history.length > 20) history.pop();  // 最多保留20条
         renderHistory();
     }
 
+    // ===== 渲染历史记录列表 =====
     function renderHistory() {
         const card = document.getElementById('historyCard');
         const body = document.getElementById('historyBody');
@@ -926,27 +973,29 @@
         body.innerHTML = history.map(h => `
             <div class="history-item">
                 <span class="hi-time">${h.time}</span>
-                <span class="hi-name">${h.name}</span>
+                <span class="hi-name" title="${h.name}">${h.name}</span>
                 <span class="hi-type">${h.type}</span>
-                <span class="hi-fields">${h.fields} fields</span>
+                <span class="hi-fields">${h.fields} 个字段</span>
                 <span class="hi-time-ms">${h.time_ms.toFixed(0)}ms</span>
             </div>
         `).join('');
     }
 
+    // ===== 清空历史记录 =====
     function clearHistory() {
         history = [];
         document.getElementById('historyCard').style.display = 'none';
-        showToast('History cleared');
+        showToast('历史记录已清空');
     }
 
-    // ===== Templates =====
+    // ===== 显示文档模板面板 =====
     async function showTemplates() {
         const panel = document.getElementById('templatesPanel');
         panel.style.display = 'block';
         panel.scrollIntoView({ behavior: 'smooth' });
 
         try {
+            // 调用 /templates 接口获取模板列表
             const resp = await fetch(`${API_BASE}/templates`);
             const data = await resp.json();
 
@@ -961,15 +1010,17 @@
                 </div>
             `).join('');
         } catch (e) {
-            document.getElementById('templatesGrid').innerHTML = '<p>Failed to load templates</p>';
+            // 接口请求失败时的错误提示
+            document.getElementById('templatesGrid').innerHTML = '<p style="color:var(--danger);padding:12px;">加载模板失败，请确认后端服务已启动</p>';
         }
     }
 
+    // ===== 隐藏文档模板面板 =====
     function hideTemplates() {
         document.getElementById('templatesPanel').style.display = 'none';
     }
 
-    // ===== Clear =====
+    // ===== 清空所有内容（重置状态） =====
     function clearAll() {
         currentFile = null;
         extractedData = null;
@@ -977,14 +1028,15 @@
         document.getElementById('originalImg').src = '';
         document.getElementById('fileInput').value = '';
         document.getElementById('uploadZone').style.display = '';
-        showToast('Cleared');
+        showToast('已清空');
     }
 
-    // ===== Toast =====
+    // ===== 底部 Toast 提示 =====
     function showToast(msg) {
         const toast = document.getElementById('toast');
         toast.textContent = msg;
         toast.classList.add('show');
+        // 3秒后自动隐藏
         setTimeout(() => toast.classList.remove('show'), 3000);
     }
     </script>
