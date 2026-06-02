@@ -702,6 +702,82 @@
     let currentFile = null;     // 当前已选择的文件
     let history = [];           // 提取历史记录数组（最多20条）
     let extractedData = null;   // 最近一次提取结果
+    let backendOnline = false;  // 后端是否在线（false → 使用本地 Demo 模式）
+
+    // ===== 本地 Demo 模式 Mock 数据 =====
+    // 当后端不可用时使用此数据，保证界面完整可用
+    const MOCK_DATA = {
+        invoice: {
+            success: true, source: '[上传文件]', document_type: 'invoice',
+            total_fields: 12, high_confidence_fields: 10,
+            total_time_ms: 842.3, ocr_confidence: 0.934,
+            fields: {
+                invoice_number: { value: '91120241031000001', confidence: 0.98, type: 'invoice_number' },
+                invoice_code:   { value: '1100241430',        confidence: 0.96, type: 'invoice_code' },
+                invoice_date:   { value: '2024-10-31',        confidence: 0.97, type: 'invoice_date' },
+                seller_name:    { value: '北京科技有限公司',  confidence: 0.95, type: 'seller_name' },
+                seller_tax_id:  { value: '91110000MA01XXXXX', confidence: 0.93, type: 'seller_tax_id' },
+                buyer_name:     { value: '上海贸易有限公司',  confidence: 0.94, type: 'buyer_name' },
+                buyer_tax_id:   { value: '91310000MA1AXXXXX', confidence: 0.92, type: 'buyer_tax_id' },
+                amount_pretax:  { value: '¥10,000.00',        confidence: 0.99, type: 'amount_pretax' },
+                tax_rate:       { value: '13%',               confidence: 0.98, type: 'tax_rate' },
+                tax_amount:     { value: '¥1,300.00',         confidence: 0.99, type: 'tax_amount' },
+                amount_total:   { value: '¥11,300.00',        confidence: 0.99, type: 'amount_total' },
+                goods_desc:     { value: '技术服务费',        confidence: 0.91, type: 'goods_description' },
+            },
+            ocr_text: '发票代码: 1100241430\n发票号码: 91120241031000001\n开票日期: 2024年10月31日\n购买方名称: 上海贸易有限公司\n纳税人识别号: 91310000MA1AXXXXX\n销售方名称: 北京科技有限公司\n纳税人识别号: 91110000MA01XXXXX\n货物名称: 技术服务费\n金额: ¥10,000.00  税率: 13%  税额: ¥1,300.00\n价税合计: 壹万壹仟叁佰元整 ¥11,300.00',
+            stage_timings: { '图像预处理': 58.2, '文本检测': 124.7, '版面分析': 43.1, 'OCR识别': 562.8, '字段抽取': 53.5 },
+        },
+        receipt: {
+            success: true, source: '[上传文件]', document_type: 'receipt',
+            total_fields: 5, high_confidence_fields: 5,
+            total_time_ms: 412.6, ocr_confidence: 0.921,
+            fields: {
+                invoice_date:   { value: '2024-11-15 14:32', confidence: 0.97, type: 'invoice_date' },
+                amount_total:   { value: '¥286.50',          confidence: 0.99, type: 'amount_total' },
+                payment_method: { value: '微信支付',         confidence: 0.95, type: 'payment_method' },
+                merchant_name:  { value: '全家便利店（朝阳门店）', confidence: 0.93, type: 'merchant_name' },
+                goods_desc:     { value: '便利店零售',       confidence: 0.88, type: 'goods_description' },
+            },
+            ocr_text: '全家便利店（朝阳门店）\n日期: 2024-11-15 14:32\n饮料 ×2  ¥12.00\n零食 ×3  ¥24.50\n日用品 ×1  ¥250.00\n合计: ¥286.50\n支付方式: 微信支付\n谢谢惠顾！',
+            stage_timings: { '图像预处理': 41.2, '文本检测': 88.4, '版面分析': 22.3, 'OCR识别': 228.1, '字段抽取': 32.6 },
+        },
+        bank_statement: {
+            success: true, source: '[上传文件]', document_type: 'bank_statement',
+            total_fields: 5, high_confidence_fields: 5,
+            total_time_ms: 628.4, ocr_confidence: 0.956,
+            fields: {
+                bank_name:    { value: '中国工商银行',              confidence: 0.98, type: 'bank_name' },
+                bank_account: { value: '6222 **** **** 1234',       confidence: 0.97, type: 'bank_account' },
+                amount_total: { value: '¥50,000.00',               confidence: 0.99, type: 'amount_total' },
+                invoice_date: { value: '2024-11-01 ~ 2024-11-30', confidence: 0.95, type: 'invoice_date' },
+                seller_name:  { value: '张三',                      confidence: 0.92, type: 'seller_name' },
+            },
+            ocr_text: '中国工商银行 个人账户对账单\n账号: 6222 **** **** 1234\n户名: 张三\n统计期间: 2024-11-01 至 2024-11-30\n期末余额: ¥50,000.00\n收入合计: ¥80,000.00  支出合计: ¥30,000.00',
+            stage_timings: { '图像预处理': 52.3, '文本检测': 103.5, '版面分析': 38.7, 'OCR识别': 395.2, '字段抽取': 38.7 },
+        },
+        contract: {
+            success: true, source: '[上传文件]', document_type: 'contract',
+            total_fields: 5, high_confidence_fields: 4,
+            total_time_ms: 754.9, ocr_confidence: 0.912,
+            fields: {
+                contract_number: { value: 'HT-2024-10-0001',        confidence: 0.97, type: 'contract_number' },
+                seller_name:     { value: '甲方：北京科技有限公司', confidence: 0.96, type: 'seller_name' },
+                buyer_name:      { value: '乙方：上海贸易有限公司', confidence: 0.95, type: 'buyer_name' },
+                amount_total:    { value: '¥100,000.00',            confidence: 0.98, type: 'amount_total' },
+                invoice_date:    { value: '2024-10-01',             confidence: 0.94, type: 'invoice_date' },
+            },
+            ocr_text: '技术服务合同\n合同编号: HT-2024-10-0001\n甲方: 北京科技有限公司\n乙方: 上海贸易有限公司\n合同金额: 壹拾万元整（¥100,000.00）\n合同日期: 2024年10月01日',
+            stage_timings: { '图像预处理': 63.1, '文本检测': 119.4, '版面分析': 41.2, 'OCR识别': 481.6, '字段抽取': 49.6 },
+        },
+    };
+
+    const MOCK_TEMPLATES = [
+        { document_type: 'invoice',        name: '增值税发票',  description: '自动提取发票号码、代码、开票日期、买卖双方信息、金额、税率等12个字段', field_types: Object.keys(MOCK_DATA.invoice.fields) },
+        { document_type: 'receipt',        name: '收据/小票',   description: '自动提取日期、合计金额、支付方式、商户名称等字段',                     field_types: Object.keys(MOCK_DATA.receipt.fields) },
+        { document_type: 'bank_statement', name: '银行流水',    description: '自动提取银行名称、账号、余额、统计期间等字段',                           field_types: Object.keys(MOCK_DATA.bank_statement.fields) },
+        { document_type: 'contract',       name: '合同/协议',   description: '自动提取合同编号、甲乙方名称、金额、签订日期等字段',                     field_types: Object.keys(MOCK_DATA.contract.fields) },
+    ];
 
     // ===== 初始化：页面加载后检查后端连接 =====
     document.addEventListener('DOMContentLoaded', () => {
@@ -712,17 +788,23 @@
     async function checkHealth() {
         const dot = document.getElementById('statusDot');
         const text = document.getElementById('statusText');
+        // 设置 2 秒超时，避免长时间等待
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 2000);
         try {
-            const resp = await fetch(`${API_BASE}/health`);
+            const resp = await fetch(`${API_BASE}/health`, { signal: ctrl.signal });
+            clearTimeout(tid);
             const data = await resp.json();
+            backendOnline = true;
             dot.className = 'status-dot ok';
-            // 显示 OCR 引擎名称和版本
             text.textContent = `${data.ocr_engine || 'OCR'} 已就绪`;
             document.getElementById('versionBadge').textContent = `v${data.version || '0.1.0'}`;
         } catch (e) {
-            // 后端离线或网络错误
-            dot.className = 'status-dot err';
-            text.textContent = '服务离线';
+            clearTimeout(tid);
+            // 后端不可用时切换到 Demo 演示模式
+            backendOnline = false;
+            dot.className = 'status-dot loading';
+            text.textContent = 'Demo 演示模式（离线）';
         }
     }
 
@@ -760,7 +842,7 @@
         extractDocument();
     }
 
-    // ===== 核心提取逻辑（调用 /extract/visual 接口） =====
+    // ===== 核心提取逻辑（调用 /extract/visual 接口 或 本地 Demo 模式） =====
     async function extractDocument() {
         if (!currentFile) return;
 
@@ -770,17 +852,39 @@
         showLoading(true);
 
         try {
-            // 构建 multipart/form-data 请求
-            const formData = new FormData();
-            formData.append('file', currentFile);
-            formData.append('document_type', docType);
+            let data;
 
-            const resp = await fetch(`${API_BASE}/extract/visual`, {
-                method: 'POST',
-                body: formData,
-            });
+            if (backendOnline) {
+                // === 后端在线：调用真实 API ===
+                const formData = new FormData();
+                formData.append('file', currentFile);
+                formData.append('document_type', docType);
 
-            const data = await resp.json();
+                const resp = await fetch(`${API_BASE}/extract/visual`, {
+                    method: 'POST',
+                    body: formData,
+                });
+                data = await resp.json();
+            } else {
+                // === 离线 Demo 模式：使用本地 Mock 数据 ===
+                // 模拟 0.8~1.5 秒网络延迟，体验真实感
+                await new Promise(r => setTimeout(r, 800 + Math.random() * 700));
+
+                // 根据所选文档类型返回对应 Mock 数据，添加随机扰动
+                const key = (docType === 'auto')
+                    ? ['invoice','receipt','bank_statement','contract'][Math.floor(Math.random()*4)]
+                    : docType;
+                const template = MOCK_DATA[key] || MOCK_DATA.invoice;
+
+                // 深拷贝 + 为各字段置信度加随机扰动 ±3%
+                data = JSON.parse(JSON.stringify(template));
+                data.total_time_ms = +(data.total_time_ms * (0.9 + Math.random() * 0.2)).toFixed(1);
+                for (const k of Object.keys(data.fields)) {
+                    data.fields[k].confidence = Math.min(1,
+                        data.fields[k].confidence + (Math.random() - 0.5) * 0.06
+                    );
+                }
+            }
 
             // 提取失败时显示错误
             if (!data.success) {
@@ -791,16 +895,20 @@
 
             extractedData = data;
 
-            // 将标注图（base64）设置到预览标签
+            // 将标注图（base64）设置到预览标签（Demo 模式无标注图，保持原图）
             if (data.annotated_image) {
                 document.getElementById('resultImg').src = data.annotated_image;
+            } else {
+                // 离线模式：标注预览与原图相同
+                document.getElementById('resultImg').src = document.getElementById('originalImg').src;
             }
 
             // 渲染结果、性能数据、历史记录
             renderResults(data);
             renderPerformance(data.stage_timings || {});
             addToHistory(data, currentFile.name);
-            showToast('✅ 提取完成');
+            const modeTag = backendOnline ? '' : ' (Demo)';
+            showToast(`✅ 提取完成${modeTag}`);
 
         } catch (e) {
             // 网络异常或接口报错
@@ -994,25 +1102,29 @@
         panel.style.display = 'block';
         panel.scrollIntoView({ behavior: 'smooth' });
 
-        try {
-            // 调用 /templates 接口获取模板列表
-            const resp = await fetch(`${API_BASE}/templates`);
-            const data = await resp.json();
+        let templates = MOCK_TEMPLATES;  // 默认使用本地 Mock 模板
 
-            const grid = document.getElementById('templatesGrid');
-            grid.innerHTML = (data.templates || []).map(t => `
-                <div class="template-card">
-                    <div class="tc-name">${t.name}</div>
-                    <div class="tc-desc">${t.description}</div>
-                    <div class="tc-fields">
-                        ${(t.field_types || []).map(f => `<span>${f}</span>`).join('')}
-                    </div>
-                </div>
-            `).join('');
-        } catch (e) {
-            // 接口请求失败时的错误提示
-            document.getElementById('templatesGrid').innerHTML = '<p style="color:var(--danger);padding:12px;">加载模板失败，请确认后端服务已启动</p>';
+        if (backendOnline) {
+            try {
+                // 调用 /templates 接口获取模板列表
+                const resp = await fetch(`${API_BASE}/templates`);
+                const data = await resp.json();
+                templates = data.templates || MOCK_TEMPLATES;
+            } catch (e) {
+                // 接口失败时回退到 Mock 模板
+            }
         }
+
+        const grid = document.getElementById('templatesGrid');
+        grid.innerHTML = templates.map(t => `
+            <div class="template-card">
+                <div class="tc-name">${t.name}</div>
+                <div class="tc-desc">${t.description}</div>
+                <div class="tc-fields">
+                    ${(t.field_types || []).map(f => `<span>${f}</span>`).join('')}
+                </div>
+            </div>
+        `).join('');
     }
 
     // ===== 隐藏文档模板面板 =====
