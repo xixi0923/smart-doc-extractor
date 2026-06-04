@@ -797,14 +797,15 @@
             const data = await resp.json();
             backendOnline = true;
             dot.className = 'status-dot ok';
-            text.textContent = `${data.ocr_engine || 'OCR'} 已就绪`;
-            document.getElementById('versionBadge').textContent = `v${data.version || '0.1.0'}`;
+            const modeLabel = data.mode === 'real-ocr' ? 'EasyOCR' : (data.ocr_engine || 'OCR');
+            text.textContent = `${modeLabel} 已就绪`;
+            document.getElementById('versionBadge').textContent = `v${data.version || '0.2.0'}`;
         } catch (e) {
             clearTimeout(tid);
-            // 后端不可用时切换到 Demo 演示模式
+            // 后端不可用时切换到离线 Demo 模式
             backendOnline = false;
             dot.className = 'status-dot loading';
-            text.textContent = 'Demo 演示模式（离线）';
+            text.textContent = '离线模式（需启动后端）';
         }
     }
 

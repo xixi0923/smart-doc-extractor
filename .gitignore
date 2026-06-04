@@ -36,3 +36,7 @@ Thumbs.db
 samples/*.jpg
 samples/*.png
 samples/*.jpeg
+
+# OCR models
+.easyocr_models/
+.easyocr_user_network/
