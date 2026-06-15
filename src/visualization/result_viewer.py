@@ -5,11 +5,13 @@ Generates annotated images and HTML reports showing extraction results.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import cv2
 import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 
 from src.pipeline.extractor import PipelineResult
 from src.utils.image_utils import gray_to_rgb, save_image
@@ -54,6 +56,33 @@ class ResultViewer:
     def __init__(self, font_scale: float = 0.6, line_thickness: int = 2):
         self.font_scale = font_scale
         self.line_thickness = line_thickness
+        self._pil_font = self._load_chinese_font()
+
+    @staticmethod
+    def _load_chinese_font() -> Optional[ImageFont.FreeTypeFont]:
+        """Load a Chinese-capable font for PIL text rendering."""
+        # Common Chinese font paths on different platforms
+        font_paths = [
+            # Windows
+            "C:/Windows/Fonts/msyh.ttc",      # Microsoft YaHei
+            "C:/Windows/Fonts/simhei.ttf",     # SimHei
+            "C:/Windows/Fonts/simsun.ttc",     # SimSun
+            # Linux
+            "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+            # macOS
+            "/System/Library/Fonts/PingFang.ttc",
+            "/Library/Fonts/Arial Unicode.ttf",
+        ]
+        for path in font_paths:
+            if os.path.exists(path):
+                try:
+                    return ImageFont.truetype(path, 18)
+                except Exception:
+                    continue
+        logger.warning("No Chinese font found, using PIL default font")
+        return ImageFont.load_default()
 
     def annotate_image(
         self,
@@ -90,8 +119,12 @@ class ResultViewer:
                     color, self.line_thickness,
                 )
 
-        # Draw extracted fields with labels
+        # Draw extracted fields with labels (using PIL for Chinese text support)
         if pipeline_result.extraction_result:
+            # Convert to PIL Image for Chinese text rendering
+            pil_image = Image.fromarray(annotated)
+            draw = ImageDraw.Draw(pil_image)
+
             for extracted_field in pipeline_result.extraction_result.fields:
                 bbox = extracted_field.bbox
                 if bbox == (0, 0, 0, 0):
@@ -106,30 +139,36 @@ class ResultViewer:
                     color, self.line_thickness + 1,
                 )
 
-                # Add label
+                # Add label using PIL (supports Chinese characters)
                 label = f"{extracted_field.display_name}: {extracted_field.value[:20]}"
-                label_size, _ = cv2.getTextSize(
-                    label, cv2.FONT_HERSHEY_SIMPLEX,
-                    self.font_scale * 0.8, 1,
-                )
+
+                # Measure text size
+                if self._pil_font:
+                    text_bbox = draw.textbbox((0, 0), label, font=self._pil_font)
+                    tw = text_bbox[2] - text_bbox[0]
+                    th = text_bbox[3] - text_bbox[1]
+                else:
+                    tw, th = len(label) * 8, 12
 
                 # Label background
-                label_y = max(y - 5, label_size[1] + 5)
+                label_y = max(y - 5, th + 5)
                 cv2.rectangle(
                     annotated,
-                    (x, label_y - label_size[1] - 2),
-                    (x + label_size[0] + 4, label_y + 2),
+                    (x, label_y - th - 4),
+                    (x + tw + 8, label_y + 2),
                     color, -1,
                 )
 
-                # Label text
-                cv2.putText(
-                    annotated, label,
-                    (x + 2, label_y - 2),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    self.font_scale * 0.8,
-                    (255, 255, 255), 1, cv2.LINE_AA,
+                # Re-convert the portion with background to PIL for text
+                pil_image = Image.fromarray(annotated)
+                draw = ImageDraw.Draw(pil_image)
+                draw.text(
+                    (x + 3, label_y - th - 2),
+                    label,
+                    fill=(255, 255, 255),
+                    font=self._pil_font,
                 )
+                annotated = np.array(pil_image)
 
         return annotated
 

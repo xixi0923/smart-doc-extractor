@@ -222,14 +222,23 @@ FIELD_METADATA: Dict[FieldType, Dict] = {
         "validation": None,
         "category": "metadata",
     },
-    FieldType.RECEIVER_ADDRESS: {
-        "display_name": "收件地址",
-        "display_name_en": "Receiver Address",
+    FieldType.SENDER_NAME: {
+        "display_name": "寄件人",
+        "display_name_en": "Sender Name",
         "patterns": [
-            r"(?:地址|收件地址|Address)[：:\s]*(.+?)(?:\n|$)",
+            r"(?:寄件人|发件人|Sender|寄方)[：:\s]*([\u4e00-\u9fa5A-Za-z]+)",
         ],
         "validation": None,
-        "category": "contact",
+        "category": "entity",
+    },
+    FieldType.TABLE_TOTAL: {
+        "display_name": "表格合计",
+        "display_name_en": "Table Total",
+        "patterns": [
+            r"(?:表格合计|明细合计|Item Total)[：:\s]*[¥￥$]?\s*([\d,]+\.?\d*)",
+        ],
+        "validation": r"^[\d,.]+$",
+        "category": "monetary",
     },
     FieldType.DOCUMENT_TYPE: {
         "display_name": "文档类型",

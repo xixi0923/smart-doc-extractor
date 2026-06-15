@@ -253,15 +253,10 @@ def create_app(config: Optional[AppConfig] = None) -> FastAPI:
                 fields=result.extraction_result.to_dict()["fields"] if result.extraction_result else {},
                 ocr_text=result.ocr_result.full_text[:2000] if result.ocr_result else "",
                 ocr_confidence=result.ocr_result.avg_confidence if result.ocr_result else 0.0,
+                annotated_image=f"data:image/jpeg;base64,{annotated_b64}",
             )
-            # Attach annotated image to response as extra field
-            response_dict = response.model_dump()
-            response_dict["annotated_image"] = f"data:image/jpeg;base64,{annotated_b64}"
 
-            # Add stage timings
-            response_dict["stage_timings"] = result.stage_timings if result.stage_timings else {}
-
-            return response_dict
+            return response
 
         except Exception as e:
             logger.error(f"Visual extraction failed: {e}")

@@ -36,6 +36,8 @@ class PipelineResult:
 
     # Stage results
     enhanced_image: Optional[np.ndarray] = None
+    grayscale_image: Optional[np.ndarray] = None
+    original_rgb: Optional[np.ndarray] = None
     detection_result: Optional[DetectionResult] = None
     ocr_result: Optional[OcrPageResult] = None
     extraction_result: Optional[ExtractionResult] = None
@@ -144,21 +146,28 @@ class DocumentExtractor:
 
             # Stage 2: Preprocess / Enhance
             t2 = time.time()
-            enhanced = self.enhancer.enhance(image)
+            # Keep original RGB for seal detection (requires color info)
+            if len(image.shape) == 3:
+                result.original_rgb = image.copy()
+            else:
+                result.original_rgb = image.copy()
+            # enhance returns both grayscale (for OCR) and binary (for detection)
+            enhanced, grayscale = self.enhancer.enhance(image)
             result.enhanced_image = enhanced
+            result.grayscale_image = grayscale
             result.stage_timings["preprocess"] = (time.time() - t2) * 1000
             logger.info("Stage complete: preprocessing")
 
-            # Stage 3: Text detection
+            # Stage 3: Text detection (uses binary image)
             t3 = time.time()
             detection = self.detector.detect(enhanced)
             result.detection_result = detection
             result.stage_timings["detection"] = (time.time() - t3) * 1000
             logger.info("Stage complete: detection")
 
-            # Stage 4: Layout analysis + region classification
+            # Stage 4: Layout analysis + region classification (uses original RGB for seals)
             t4 = time.time()
-            layout_regions = self.layout_analyzer.analyze(enhanced)
+            layout_regions = self.layout_analyzer.analyze(result.original_rgb)
             classified_regions = self.classifier.classify(
                 detection.regions, enhanced.shape[:2], layout_regions
             )
@@ -166,9 +175,9 @@ class DocumentExtractor:
             result.stage_timings["layout"] = (time.time() - t4) * 1000
             logger.info("Stage complete: layout + classification")
 
-            # Stage 5: OCR recognition
+            # Stage 5: OCR recognition (uses grayscale, not binary)
             t5 = time.time()
-            ocr_result = self.ocr_engine.recognize(enhanced)
+            ocr_result = self.ocr_engine.recognize(grayscale)
             # Post-process OCR output
             ocr_result = self._postprocessor.process_page(ocr_result)
             result.ocr_result = ocr_result

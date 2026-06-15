@@ -37,6 +37,7 @@ class ExtractResponse(BaseModel):
     fields: Dict[str, dict] = Field(default_factory=dict)
     ocr_text: str = ""
     ocr_confidence: float = 0.0
+    annotated_image: str = ""
     error: Optional[str] = None
 
 

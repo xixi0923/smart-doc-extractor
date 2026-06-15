@@ -69,7 +69,9 @@ class ImageEnhancer:
             image: Input image (RGB or grayscale).
 
         Returns:
-            Enhanced image (grayscale).
+            Tuple of (binary_image, grayscale_image).
+            binary_image: for text detection and layout analysis.
+            grayscale_image: for OCR (OCR works better with grayscale than binary).
         """
         logger.info(f"Starting enhancement pipeline (input shape: {image.shape})")
 
@@ -91,6 +93,9 @@ class ImageEnhancer:
         if self.config.clahe:
             gray = self._apply_clahe(gray)
 
+        # Save grayscale version for OCR (OCR works better with grayscale)
+        grayscale_for_ocr = gray.copy()
+
         # Step 4: Binarize
         if self.config.binarize:
             binary = self._binarize(gray)
@@ -102,7 +107,7 @@ class ImageEnhancer:
             binary = self._deskew(binary)
 
         logger.info("Enhancement pipeline completed")
-        return binary
+        return binary, grayscale_for_ocr
 
     def _remove_borders(self, image: np.ndarray) -> np.ndarray:
         """Remove dark borders and artifacts from document edges."""

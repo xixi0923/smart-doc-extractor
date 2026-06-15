@@ -1,4 +1,3 @@
-"""Template for receipt document type."""
 {
     "document_type": "receipt",
     "name": "收据",

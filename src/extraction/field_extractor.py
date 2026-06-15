@@ -297,7 +297,6 @@ class FieldExtractor:
                 FieldType.RECEIVER_NAME,
                 FieldType.RECEIVER_PHONE,
                 FieldType.REMARKS,
-                FieldType.REMARKS,
             ]
         elif doc_type == "receipt":
             return [

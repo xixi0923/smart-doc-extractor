@@ -1,218 +1,268 @@
-# Smart Doc Extractor
+# Smart Doc Extractor - 智能文档信息提取系统
 
-智能文档信息提取系统 — 从发票、收据、银行流水、合同等文档图像中自动提取结构化字段信息。
+从发票、收据、银行流水、合同等文档图像中自动提取结构化字段信息的 Python 系统。
 
-## Features
+## 功能特性
 
-- **多文档类型支持**: 发票 (VAT Invoice)、收据 (Receipt)、银行流水 (Bank Statement)、合同 (Contract)
-- **智能版面分析**: 自动检测标题、正文、表格、印章等区域
-- **可插拔 OCR 引擎**: Tesseract OCR / EasyOCR，灵活切换
-- **正则+规则抽取引擎**: 20+ 预定义字段类型，支持自定义模板扩展
-- **置信度评分**: 每个字段附带置信度分数，低置信度标记需人工复核
-- **REST API 服务**: FastAPI 提供批量处理、异步任务、结果查询
-- **可视化结果**: 在原图上标注提取框 + HTML 报告
+- **多文档类型支持**：增值税发票、收据、银行流水、合同，支持自动类型检测
+- **5 级流水线架构**：图像预处理 → 文本检测 → 版面分析 → OCR 识别 → 字段提取
+- **可插拔 OCR 引擎**：Tesseract / EasyOCR / RapidOCR，灵活切换
+- **智能版面分析**：自动检测标题、正文、表格、印章等区域，印章检测基于 RGB 颜色空间
+- **22+ 预定义字段类型**：正则 + 规则引擎抽取，支持自定义模板扩展
+- **置信度评分**：每个字段附带置信度分数，低置信度标记需人工复核
+- **中文标注渲染**：基于 PIL/Pillow 渲染中文字符，标注图无乱码
+- **REST API 服务**：FastAPI 提供单张/批量处理、可视化标注等接口
+- **可视化结果**：在原图上标注提取框 + HTML 报告
 
-## Architecture
+## 架构
 
 ```
-Image Input → Preprocessing → Text Detection → OCR Recognition → Field Extraction → JSON Output
-     │              │              │                │                  │
-     │         denoise          MSER +         Tesseract/         regex +
-     │         binarize         contour          EasyOCR           rules
-     │         deskew           NMS           postprocess
-     │         CLAHE         classification
-     │      border removal    layout analysis
+┌──────────┐   ┌───────────┐   ┌───────────┐   ┌──────────┐   ┌──────────┐
+│  图像输入  │──▶│  图像预处理  │──▶│ 文本检测&  │──▶│ OCR 识别  │──▶│ 字段提取  │
+│          │   │          │   │ 版面分析   │   │          │   │          │
+└──────────┘   └───────────┘   └───────────┘   └──────────┘   └──────────┘
+               去噪/二值化     MSER + 轮廓    Tesseract/     正则 + 规则
+               CLAHE/纠偏     NMS/分类       EasyOCR/       置信度评分
+               去边框         印章检测(RGB)   RapidOCR       模板匹配
 ```
 
-## Tech Stack
+> **关键设计**：预处理阶段同时输出二值图（用于文本检测）和灰度图（用于 OCR），印章检测使用原始 RGB 图像以保留颜色信息。
 
-| Component | Technology |
-|-----------|-----------|
-| Image Processing | OpenCV |
-| OCR Engine | Tesseract / EasyOCR |
+## 技术栈
+
+| 组件 | 技术 |
+|------|------|
+| 图像处理 | OpenCV, NumPy |
+| OCR 引擎 | Tesseract / EasyOCR / RapidOCR (ONNX) |
 | REST API | FastAPI + Uvicorn |
-| Config | Python dataclass |
-| Validation | JSON Schema |
+| 数据校验 | Pydantic |
+| 中文渲染 | Pillow (PIL) + 系统中文字体 |
+| 配置管理 | Python dataclass |
+| 文本渲染 | Pillow (支持中文) |
 
-## Quick Start
+## 快速开始
 
-### Installation
+### 安装
 
 ```bash
-# Clone the repository
+# 克隆仓库
 git clone https://github.com/xixi0923/smart-doc-extractor.git
 cd smart-doc-extractor
 
-# Install dependencies
-pip install opencv-python pytesseract numpy fastapi uvicorn pydantic
+# 安装核心依赖
+pip install opencv-python pytesseract numpy fastapi uvicorn pydantic pillow
 
-# Optional: Install EasyOCR as alternative OCR backend
-pip install easyocr
+# 可选：安装其他 OCR 后端
+pip install easyocr                # EasyOCR 后端
+pip install rapidocr-onnxruntime   # RapidOCR 后端（推荐，内嵌模型无需联网）
 
-# Install Tesseract OCR system binary (required for tesseract backend)
+# 安装 Tesseract OCR 系统二进制（使用 Tesseract 后端时必需）
 # Ubuntu/Debian: sudo apt install tesseract-ocr tesseract-ocr-chi-sim
-# macOS: brew install tesseract
-# Windows: download installer from https://github.com/UB-Mannheim/tesseract/wiki
+# macOS: brew install tesseract tesseract-lang
+# Windows: 从 https://github.com/UB-Mannheim/tesseract/wiki 下载安装器
 ```
 
-### CLI Usage
+### CLI 使用
 
 ```bash
-# Extract from a single image (auto-detect document type)
+# 从单张图片提取（自动检测文档类型）
 python main.py extract samples/invoice.jpg
 
-# Specify document type
+# 指定文档类型
 python main.py extract samples/invoice.jpg --type invoice --output results/
 
-# Batch process a directory
+# 批量处理目录
 python main.py batch samples/ --type invoice
 
-# Start REST API server
+# 启动 REST API 服务
 python main.py serve --host 0.0.0.0 --port 8000
 
-# Show configuration
-python main.py config show
-
-# Save configuration to file
-python main.py config save --path my_config.json
+# 使用 RapidOCR 模式启动演示服务
+python demo_server.py --port 8000
 ```
 
-### REST API
+### 使用 RapidOCR 快速体验
 
 ```bash
-# Start server
-python main.py serve
+pip install rapidocr-onnxruntime fastapi uvicorn python-multipart opencv-python
+python demo_server.py
+# 访问 http://localhost:8000/ 打开前端调试控制台
+```
 
-# Health check
+## API 文档
+
+启动服务后访问 `http://localhost:8000/docs` 查看完整 Swagger 文档。
+
+### 健康检查
+
+```bash
 curl http://localhost:8000/health
+```
 
-# Extract from a single document
+### 单张文档提取
+
+```bash
 curl -X POST http://localhost:8000/extract \
   -F "file=@invoice.jpg" \
   -F "document_type=invoice"
+```
 
-# Batch extract
+### 可视化提取（含标注图）
+
+```bash
+curl -X POST http://localhost:8000/extract/visual \
+  -F "file=@invoice.jpg" \
+  -F "document_type=auto"
+```
+
+返回结果中包含 `annotated_image` 字段（base64 编码的 JPEG 标注图）。
+
+### 批量提取
+
+```bash
 curl -X POST http://localhost:8000/extract/batch \
   -F "files=@doc1.jpg" \
-  -F "files=@doc2.png"
+  -F "files=@doc2.png" \
+  -F "document_type=auto"
+```
 
-# List document templates
+### 查询文档模板
+
+```bash
 curl http://localhost:8000/templates
 ```
 
-## Project Structure
+## 项目结构
 
 ```
 smart-doc-extractor/
-├── config.py                          # Central configuration (dataclass)
-├── main.py                            # CLI entry point
+├── config.py                          # 中心配置（dataclass）
+├── main.py                            # CLI 入口
+├── demo_server.py                     # RapidOCR 演示服务
 ├── templates/
-│   ├── invoice.json                   # Invoice field template
-│   └── receipt.json                  # Receipt field template
+│   ├── invoice.json                   # 发票字段模板
+│   └── receipt.json                   # 收据字段模板
 ├── src/
 │   ├── __init__.py
 │   ├── preprocessing/
-│   │   ├── __init__.py
-│   │   ├── image_enhancer.py          # Denoise, binarize, deskew, CLAHE
-│   │   └── layout_analyzer.py         # Title, header, table, seal detection
+│   │   ├── image_enhancer.py          # 去噪、二值化、纠偏、CLAHE、返回灰度+二值
+│   │   └── layout_analyzer.py         # 标题、页眉页脚、表格、印章(RGB)检测
 │   ├── detection/
-│   │   ├── __init__.py
-│   │   ├── text_detector.py           # MSER + contour text detection
-│   │   └── region_classifier.py        # Region type classification
+│   │   ├── text_detector.py           # MSER + 轮廓文本检测
+│   │   └── region_classifier.py       # 区域类型分类
 │   ├── recognition/
-│   │   ├── __init__.py
-│   │   ├── ocr_engine.py              # Pluggable OCR (Tesseract/EasyOCR)
-│   │   └── text_postprocess.py        # Text cleanup and correction
+│   │   ├── ocr_engine.py             # 可插拔 OCR（Tesseract/EasyOCR/RapidOCR）
+│   │   └── text_postprocess.py        # 文本清理和校正
 │   ├── extraction/
-│   │   ├── __init__.py
-│   │   ├── field_types.py             # 20+ field type definitions
-│   │   └── field_extractor.py         # Regex + rule extraction engine
+│   │   ├── field_types.py             # 22+ 字段类型定义
+│   │   └── field_extractor.py         # 正则 + 规则提取引擎
 │   ├── pipeline/
-│   │   ├── __init__.py
-│   │   └── extractor.py              # End-to-end pipeline orchestration
+│   │   └── extractor.py              # 端到端流水线编排
 │   ├── visualization/
-│   │   ├── __init__.py
-│   │   └── result_viewer.py           # Annotated images + HTML reports
+│   │   └── result_viewer.py           # 标注图（PIL 中文渲染）+ HTML 报告
 │   ├── api/
-│   │   ├── __init__.py
-│   │   ├── server.py                  # FastAPI REST server
-│   │   └── schemas.py                 # Pydantic request/response models
+│   │   ├── server.py                  # FastAPI REST 服务
+│   │   └── schemas.py                 # Pydantic 请求/响应模型
 │   └── utils/
-│       ├── logger.py                  # Logging setup
-│       ├── image_utils.py             # Image I/O and utilities
-│       └── text_utils.py              # Text normalization functions
-├── samples/                           # Sample document images
-├── output/                            # Default output directory
-├── tests/                             # Unit tests
+│       ├── logger.py                  # 日志配置
+│       ├── image_utils.py             # 图像 I/O 工具
+│       └── text_utils.py              # 文本归一化函数
+├── samples/                           # 示例文档图片
+├── output/                            # 默认输出目录
+├── tests/                             # 单元测试
 ├── .gitignore
 ├── LICENSE
 └── README.md
 ```
 
-## Configuration
+## 支持的文档类型
 
-All parameters are managed in `config.py` via dataclass configs:
+| 类型 | 说明 | 关键字段 |
+|------|------|----------|
+| `invoice` | 增值税发票 | 发票号码、发票代码、开票日期、销售方、购买方、价税合计 |
+| `receipt` | 收据 | 日期、金额、收款人、备注 |
+| `bank_statement` | 银行流水 | 银行名称、银行账号、金额合计 |
+| `contract` | 合同 | 销售方、购买方、日期、金额 |
+| `auto` | 自动检测 | 系统自动判断文档类型 |
 
-| Module | Config Class | Key Parameters |
-|--------|-------------|----------------|
-| Image I/O | `ImageConfig` | target_dpi, max_dimension, allowed_formats |
-| Preprocessing | `PreprocessConfig` | denoise, binarize_method, deskew, clahe |
-| Detection | `DetectionConfig` | method, min_region_area, nms_threshold |
-| OCR | `OcrConfig` | engine, language, tesseract_config |
-| Extraction | `ExtractionConfig` | document_type, confidence_threshold |
-| API | `ApiConfig` | host, port, workers, cors_origins |
+## 字段类型
 
-### Custom Configuration
+### 标识字段（Identification）
 
-```python
-from config import AppConfig, OcrConfig
+| 字段 | 中文名 | 说明 |
+|------|--------|------|
+| `invoice_number` | 发票号码 | 8-20位数字 |
+| `invoice_code` | 发票代码 | 10-12位数字 |
+| `seller_tax_id` | 销售方税号 | 15-20位 |
+| `buyer_tax_id` | 购买方税号 | 15-20位 |
+| `bank_account` | 银行账号 | 10-30位数字 |
+| `page_number` | 页码 | 数字 |
 
-config = AppConfig()
-config.ocr.engine = "easyocr"          # Use EasyOCR instead of Tesseract
-config.ocr.language = "chi_sim+eng"    # Chinese + English
-config.preprocess.binarize_method = "adaptive"
-config.output.save_annotated_image = True
+### 时间字段（Temporal）
 
-# Save to file
-config.save("my_config.json")
+| 字段 | 中文名 |
+|------|--------|
+| `invoice_date` | 开票日期 |
+| `due_date` | 到期日期 |
 
-# Load from file
-config = AppConfig.load("my_config.json")
-```
+### 实体字段（Entity）
 
-## Supported Document Types
+| 字段 | 中文名 |
+|------|--------|
+| `seller_name` | 销售方名称 |
+| `buyer_name` | 购买方名称 |
+| `receiver_name` | 收款人 |
+| `sender_name` | 寄件人 |
+| `bank_name` | 开户银行 |
 
-| Type | Description | Key Fields |
-|------|------------|------------|
-| `invoice` | 增值税发票 | 发票号码, 发票代码, 开票日期, 价税合计 |
-| `receipt` | 收据 | 日期, 金额, 收款人, 备注 |
-| `bank_statement` | 银行流水 | 银行名称, 银行账号, 余额 |
-| `contract` | 合同 | 甲方, 乙方, 日期, 金额 |
+### 金额字段（Monetary）
 
-## Field Types (20+)
+| 字段 | 中文名 |
+|------|--------|
+| `amount_before_tax` | 金额(不含税) |
+| `tax_amount` | 税额 |
+| `amount_total` | 价税合计 |
+| `table_total` | 表格合计 |
 
-Identification: `invoice_number`, `invoice_code`, `seller_tax_id`, `buyer_tax_id`, `bank_account`, `page_number`
+### 联系字段（Contact）
 
-Temporal: `invoice_date`, `due_date`
+| 字段 | 中文名 |
+|------|--------|
+| `receiver_phone` | 联系电话 |
+| `receiver_address` | 地址 |
 
-Entity: `seller_name`, `buyer_name`, `receiver_name`, `bank_name`
+### 元数据字段（Metadata）
 
-Monetary: `amount_before_tax`, `tax_amount`, `amount_total`
+| 字段 | 中文名 |
+|------|--------|
+| `currency` | 币种 |
+| `payment_method` | 支付方式 |
+| `remarks` | 备注 |
+| `document_type` | 文档类型 |
 
-Contact: `receiver_phone`, `receiver_address`
+## 优化变更日志
 
-Metadata: `currency`, `payment_method`, `remarks`, `document_type`
+### P0 关键修复
 
-## Pipeline Performance
+| # | 文件 | 问题 | 修复 |
+|---|------|------|------|
+| 1 | `field_types.py` | `RECEIVER_ADDRESS` 在 `FIELD_METADATA` 中定义两次，后者覆盖前者且正则更差 | 删除重复定义，保留第一个更好的正则 |
+| 2 | `extractor.py` / `image_enhancer.py` | 二值图传入 OCR，OCR 对灰度图识别效果更佳 | `enhance()` 方法同时返回二值图和灰度图，OCR 使用灰度图 |
+| 3 | `templates/invoice.json` / `receipt.json` | 文件以 Python docstring 注释开头，不是合法 JSON | 移除注释，确保 JSON 格式合法 |
+| 4 | `extractor.py` / `layout_analyzer.py` | `_detect_seals` 需要 RGB 输入但收到二值图，导致印章检测永不执行 | 保存原始 RGB 图像，传给 `layout_analyzer.analyze()` |
 
-| Stage | Typical Time | Notes |
-|-------|-------------|-------|
-| Image Load | 10-50ms | Depends on image size |
-| Preprocessing | 50-200ms | Denoise + binarize + deskew |
-| Text Detection | 100-500ms | MSER + contour analysis |
-| OCR Recognition | 500-3000ms | Depends on engine and content |
-| Field Extraction | 10-50ms | Regex matching |
+### P1 重要修复
+
+| # | 文件 | 问题 | 修复 |
+|---|------|------|------|
+| 5 | `field_types.py` | `SENDER_NAME` 和 `TABLE_TOTAL` 在枚举中定义但 `FIELD_METADATA` 中缺失，导致 KeyError | 添加 `SENDER_NAME` 和 `TABLE_TOTAL` 元数据条目 |
+| 6 | `field_extractor.py` | `REMARKS` 在发票字段列表中出现两次 | 删除重复条目 |
+| 7 | `ocr_engine.py` | `TesseractEngine.recognize_region` 调用 `image_to_string` + `image_to_data` 两次 OCR | 只使用 `image_to_data` 并从中提取文本和置信度 |
+| 8 | `ocr_engine.py` | `demo_server.py` 使用 RapidOCR 但 `ocr_engine.py` 不支持 | 新增 `RapidOcrEngine` 类，工厂函数支持 `rapidocr` 选项 |
+| 9 | `result_viewer.py` | `cv2.FONT_HERSHEY_SIMPLEX` 不支持中文，标注图乱码 | 改用 PIL/Pillow 渲染中文文字，自动加载系统中文字体 |
+| 10 | `schemas.py` | `/extract/visual` 返回 `annotated_image` 但 `ExtractResponse` 无此字段 | 添加 `annotated_image: str = ""` 字段 |
+| 11 | `server.py` | `/extract/visual` 返回 dict 而非 Pydantic 模型 | 直接返回 `ExtractResponse` 模型实例 |
 
 ## License
 
-This project is licensed under the MIT License.
+MIT License

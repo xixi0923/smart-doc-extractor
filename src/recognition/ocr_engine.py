@@ -189,21 +189,26 @@ class TesseractEngine(BaseOcrEngine):
         crop = self._ensure_u8(crop)
 
         try:
-            text = self._tesseract.image_to_string(
-                crop,
-                lang=self.config.language,
-                config=self.config.tesseract_config,
-            ).strip()
-
-            # Get confidence
-            conf_data = self._tesseract.image_to_data(
+            # Use only image_to_data (avoids calling OCR twice)
+            data = self._tesseract.image_to_data(
                 crop,
                 lang=self.config.language,
                 config=self.config.tesseract_config,
                 output_type=self._tesseract.Output.DICT,
             )
-            confs = [float(c) for c in conf_data["conf"] if float(c) >= 0]
-            avg_conf = float(np.mean(confs)) / 100.0 if confs else 0.0
+
+            words = []
+            confs = []
+            n = len(data["text"])
+            for i in range(n):
+                t = data["text"][i].strip()
+                c = float(data["conf"][i])
+                if t and c >= 0:
+                    words.append(t)
+                    confs.append(c / 100.0)
+
+            text = " ".join(words)
+            avg_conf = float(np.mean(confs)) if confs else 0.0
 
             return OcrResult(
                 text=text,
@@ -333,6 +338,114 @@ class EasyOcrEngine(BaseOcrEngine):
             return OcrResult(text="", confidence=0.0, bbox=bbox)
 
 
+class RapidOcrEngine(BaseOcrEngine):
+    """
+    RapidOCR engine wrapper (based on PaddleOCR + ONNX Runtime).
+    Supports Chinese and English with embedded models, no network needed.
+    """
+
+    def __init__(self, config: Optional[OcrConfig] = None):
+        self.config = config or OcrConfig()
+        self._engine = None
+        self._initialize()
+
+    def _initialize(self) -> None:
+        """Initialize RapidOCR with lazy import."""
+        try:
+            from rapidocr_onnxruntime import RapidOCR
+            self._engine = RapidOCR()
+            logger.info("RapidOCR initialized (PaddleOCR + ONNX, embedded models)")
+        except ImportError:
+            logger.warning(
+                "rapidocr-onnxruntime not installed. "
+                "Install with: pip install rapidocr-onnxruntime"
+            )
+            raise
+
+    @property
+    def name(self) -> str:
+        return "rapidocr"
+
+    def recognize(self, image: np.ndarray) -> OcrPageResult:
+        """Run RapidOCR on the full image."""
+        t_start = time.time()
+
+        try:
+            result, elapse = self._engine(image)
+
+            results = []
+            texts = []
+            confidences = []
+
+            if result:
+                for item in result:
+                    bbox_pts = item[0]
+                    text = item[1]
+                    conf = float(item[2])
+
+                    if not text.strip():
+                        continue
+
+                    pts = np.array(bbox_pts, dtype=np.int32)
+                    x = int(pts[:, 0].min())
+                    y = int(pts[:, 1].min())
+                    w = int(pts[:, 0].max()) - x
+                    h = int(pts[:, 1].max()) - y
+
+                    results.append(OcrResult(
+                        text=text,
+                        confidence=conf,
+                        bbox=(x, y, w, h),
+                    ))
+                    texts.append(text)
+                    confidences.append(conf)
+
+            full_text = "\n".join(texts)
+            avg_conf = float(np.mean(confidences)) if confidences else 0.0
+
+            return OcrPageResult(
+                results=results,
+                full_text=full_text,
+                total_time_ms=(time.time() - t_start) * 1000,
+                avg_confidence=avg_conf,
+                engine_name=self.name,
+            )
+        except Exception as e:
+            logger.error(f"RapidOCR failed: {e}")
+            return OcrPageResult(
+                engine_name=self.name,
+                total_time_ms=(time.time() - t_start) * 1000,
+            )
+
+    def recognize_region(
+        self, image: np.ndarray, bbox: Tuple[int, int, int, int]
+    ) -> OcrResult:
+        """Run RapidOCR on a cropped region."""
+        x, y, w, h = bbox
+        if w <= 0 or h <= 0:
+            return OcrResult(text="", confidence=0.0, bbox=bbox)
+
+        pad = 3
+        img_h, img_w = image.shape[:2]
+        crop = image[
+            max(0, y - pad):min(img_h, y + h + pad),
+            max(0, x - pad):min(img_w, x + w + pad),
+        ]
+
+        try:
+            result, elapse = self._engine(crop)
+            if result:
+                text = " ".join(item[1] for item in result)
+                conf = float(np.mean([float(item[2]) for item in result]))
+            else:
+                text = ""
+                conf = 0.0
+            return OcrResult(text=text, confidence=conf, bbox=bbox)
+        except Exception as e:
+            logger.error(f"RapidOCR region OCR failed: {e}")
+            return OcrResult(text="", confidence=0.0, bbox=bbox)
+
+
 def create_ocr_engine(config: Optional[OcrConfig] = None) -> BaseOcrEngine:
     """
     Factory function to create an OCR engine based on config.
@@ -353,8 +466,10 @@ def create_ocr_engine(config: Optional[OcrConfig] = None) -> BaseOcrEngine:
         return TesseractEngine(config)
     elif config.engine == "easyocr":
         return EasyOcrEngine(config)
+    elif config.engine == "rapidocr":
+        return RapidOcrEngine(config)
     else:
         raise ValueError(
             f"Unsupported OCR engine: {config.engine}. "
-            f"Supported: tesseract, easyocr"
+            f"Supported: tesseract, easyocr, rapidocr"
         )
