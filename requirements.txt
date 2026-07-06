@@ -1,0 +1,17 @@
+# Core dependencies
+opencv-python>=4.8.0
+numpy>=1.24.0
+fastapi>=0.100.0
+uvicorn>=0.23.0
+python-multipart>=0.0.6
+pydantic>=2.0.0
+pillow>=10.0.0
+pytesseract>=0.3.10
+
+# Optional OCR backends (uncomment one as needed)
+# easyocr
+# rapidocr-onnxruntime
+# Note: Tesseract also requires the system binary:
+#   Ubuntu/Debian: sudo apt install tesseract-ocr tesseract-ocr-chi-sim
+#   macOS:         brew install tesseract tesseract-lang
+#   Windows:       install from https://github.com/UB-Mannheim/tesseract/wiki
