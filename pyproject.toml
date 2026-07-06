@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smart-doc-extractor"
+version = "0.1.0"
+description = "Intelligent document information extraction system (OCR + field extraction pipeline)"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+dependencies = [
+    "opencv-python>=4.8.0",
+    "numpy>=1.24.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "python-multipart>=0.0.6",
+    "pydantic>=2.0.0",
+    "pillow>=10.0.0",
+    "pytesseract>=0.3.10",
+]
+
+[project.optional-dependencies]
+easyocr = ["easyocr"]
+rapidocr = ["rapidocr-onnxruntime"]
+
+[tool.setuptools]
+py-modules = ["config", "main", "demo_server"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
